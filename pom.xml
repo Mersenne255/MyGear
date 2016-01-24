@@ -10,7 +10,7 @@
 	<distributionManagement>
 		<repository>
 			<id>ftp-repository</id>
-			<url>ftp://2029818@f4-preview.runhosting.com/mersenne.atwebpages.com/files/</url>
+			<url>${FTP-server}</url>
 		</repository>
 	</distributionManagement>
 
