@@ -1,4 +1,5 @@
 package p;
+
 import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -7,9 +8,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import main.PrimitiveTypes;
-import main.Test;
 
 public class C {
 	private static int DEPTH_THRESHOLD = 50;
@@ -25,24 +23,18 @@ public class C {
 
 	static Set<Object> objects = new HashSet<Object>();
 
-	public static void main(String[] args) {
-		try {
-			new C().m(new Test());
-			// new Main().transform(Calendar.getInstance());
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+	public static void m(Object o, String args) {
+		transform(o);
 	}
 
-	public static void m(Object o) throws IllegalArgumentException, IllegalAccessException {
+	public static void m(Object o) {
+		transform(o);
+	}
+
+	public static void transform(Object o) {
 		if (o != null) {
 			DESTINATION.print("<Parent_object type=\"" + o.getClass().getName() + "\">");
-			transform(o, o.getClass(), 1);			
+			transform(o, o.getClass(), 1);
 		} else {
 			DESTINATION.print("null");
 		}
@@ -50,78 +42,98 @@ public class C {
 	}
 
 	static String adjustTextForXML(String originalText) {
-		return originalText.replace("[", "ArrayOf").replace(";", "").replace("$", "");
+		return originalText.replace("[", "ArrayOf").replaceAll("\\W", "");
 	}
 
-	static void transform(Object o, Class c, int depth) throws IllegalArgumentException, IllegalAccessException {
+	static void transform(Object o, Class c, int depth) {
 
 		if (c.isArray()) {
-			if (c.getComponentType().isPrimitive()) {
-				for (int i = 0; i < Array.getLength(o); i++) {
-					Object arrayObject = Array.get(o, i);
-					DESTINATION.print("<" + c.getComponentType().getName() + ">" + arrayObject.toString() + "</"
-							+ c.getComponentType().getName() + ">");
+			try {
+				if (c.getComponentType().isPrimitive()) {
+					for (int i = 0; i < Array.getLength(o); i++) {
+						Object arrayObject = Array.get(o, i);
+						DESTINATION.print("<" + c.getComponentType().getName() + ">" + arrayObject.toString() + "</"
+								+ c.getComponentType().getName() + ">");
+					}
+				} else if (isWrapperClass(c.getComponentType()) && ONLY_LITERALS_VALUE) {
+					for (int i = 0; i < Array.getLength(o); i++) {
+						Object arrayObject = Array.get(o, i);
+						String objectValue = arrayObject == null ? "null" : arrayObject.toString();
+						DESTINATION.print("<" + c.getComponentType().getName() + ">" + objectValue + "</"
+								+ c.getComponentType().getName() + ">");
+					}
+				} else {
+					for (int i = 0; i < Array.getLength(o); i++) {
+						Object arrayObject = Array.get(o, i);
+						DESTINATION.print("<" + adjustTextForXML(c.getComponentType().getName()) + ">");
+						if (arrayObject == null) {
+							DESTINATION.print("null");
+						} else {
+							transform(arrayObject, arrayObject.getClass(), depth + 1);
+						}
+						DESTINATION.print("</" + adjustTextForXML(c.getComponentType().getName()) + ">");
+					}
 				}
-			} else if (isWrapperClass(c.getComponentType()) && ONLY_LITERALS_VALUE) {
-				for (int i = 0; i < Array.getLength(o); i++) {
-					Object arrayObject = Array.get(o, i);
-					DESTINATION.print("<" + c.getComponentType().getName() + ">" + arrayObject.toString() + "</"
-							+ c.getComponentType().getName() + ">");
-				}
-			} else {
-				for (int i = 0; i < Array.getLength(o); i++) {
-					Object arrayObject = Array.get(o, i);
-					DESTINATION.print("<" + adjustTextForXML(c.getComponentType().getName()) + ">");
-					transform(arrayObject, arrayObject.getClass(), depth + 1);
-					DESTINATION.print("</" + adjustTextForXML(c.getComponentType().getName()) + ">");
-				}
+			} catch (Exception e) {
+				DESTINATION.print("<!--Array Exception-->");
+				e.printStackTrace();
 			}
 		} else {
 			Field[] fields = c.getDeclaredFields();
 			List<Field> nonPrimitiveFields = new ArrayList<Field>();
 			for (Field field : fields) {
-				if (!PRINT_PRIVATE && !field.isAccessible()) {
-					continue;
-				}
-				if (!field.isAccessible()) {
-					field.setAccessible(true);
-				}
-				if (field.getType().isPrimitive()) {
-					DESTINATION
-							.print("<" + adjustTextForXML(field.getName()) + printFieldAttributes(field, field.get(o))
-									+ ">" + field.get(o) + "</" + adjustTextForXML(field.getName()) + ">");
-				} else {
-					nonPrimitiveFields.add(field);
+				try {
+					if (!PRINT_PRIVATE && !field.isAccessible()) {
+						continue;
+					}
+					if (!field.isAccessible()) {
+						field.setAccessible(true);
+					}
+					if (field.getType().isPrimitive()) {
+						DESTINATION.print(
+								"<" + adjustTextForXML(field.getName()) + printFieldAttributes(field, field.get(o))
+										+ ">" + field.get(o) + "</" + adjustTextForXML(field.getName()) + ">");
+					} else {
+						nonPrimitiveFields.add(field);
+					}
+				} catch (Exception e) {
+					DESTINATION.print("<!--Primitive Field Exception-->");
+					e.printStackTrace();
 				}
 			}
 			for (Field field : nonPrimitiveFields) {
-				String fieldName = adjustTextForXML(field.getName());
-				DESTINATION.print("<" + fieldName + printFieldAttributes(field, field.get(o)) + ">");
-				Object innerObject = field.get(o);
-				if (innerObject == null) {
-					DESTINATION.print("null");
-					DESTINATION.print("</" + fieldName + ">");
-				} else {
-					boolean isWrapperClass = isWrapperClass(innerObject.getClass());
-					boolean isEnumClass = innerObject.getClass().isEnum();
-					if (objects.contains(innerObject)) {
-						DESTINATION.print("<!--Object already in structure-->");
+				try {
+					String fieldName = adjustTextForXML(field.getName());
+					DESTINATION.print("<" + fieldName + printFieldAttributes(field, field.get(o)) + ">");
+					Object innerObject = field.get(o);
+					if (innerObject == null) {
+						DESTINATION.print("null");
 						DESTINATION.print("</" + fieldName + ">");
-						continue;
-					} else if (depth > DEPTH_THRESHOLD) {
-						DESTINATION
-								.print("<!--Depth threshold reached. You can adjust using DEPTH_THRESHOLD argument-->");
-						DESTINATION.print("</" + fieldName + ">");
-						continue;
-					} else if (isEnumClass || isWrapperClass && ONLY_LITERALS_VALUE) {
-						DESTINATION.print(innerObject.toString());
-						DESTINATION.print("</" + fieldName + ">");
-						continue;
 					} else {
-						objects.add(innerObject);
-						transform(innerObject, innerObject.getClass(), depth + 1);
-						DESTINATION.print("</" + fieldName + ">");
+						boolean isWrapperClass = isWrapperClass(innerObject.getClass());
+						boolean isEnumClass = innerObject.getClass().isEnum();
+						if (objects.contains(innerObject)) {
+							DESTINATION.print("<!--Object already in structure-->");
+							DESTINATION.print("</" + fieldName + ">");
+							continue;
+						} else if (depth > DEPTH_THRESHOLD) {
+							DESTINATION.print(
+									"<!--Depth threshold reached. You can adjust using DEPTH_THRESHOLD argument-->");
+							DESTINATION.print("</" + fieldName + ">");
+							continue;
+						} else if (isEnumClass || isWrapperClass && ONLY_LITERALS_VALUE) {
+							DESTINATION.print(innerObject.toString());
+							DESTINATION.print("</" + fieldName + ">");
+							continue;
+						} else {
+							objects.add(innerObject);
+							transform(innerObject, innerObject.getClass(), depth + 1);
+							DESTINATION.print("</" + fieldName + ">");
+						}
 					}
+				} catch (Exception e) {
+					DESTINATION.print("<!-- Non-Primitive Field Exception-->");
+					e.printStackTrace();
 				}
 			}
 			nonPrimitiveFields = null;
@@ -176,65 +188,18 @@ public class C {
 		return objectTypeText + modifiers + arraySize + objectId;
 	}
 
-	private void printPrimitiveArrayObject(Object array) {
-		if (array.getClass().getComponentType().getName().equals("boolean")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.BOOLEAN);
-		}
-		if (array.getClass().getComponentType().getName().equals("byte")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.BYTE);
-		}
-		if (array.getClass().getComponentType().getName().equals("char")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.CHAR);
-		}
-		if (array.getClass().getComponentType().getName().equals("short")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.SHORT);
-		}
-		if (array.getClass().getComponentType().getName().equals("int")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.INT);
-		}
-		if (array.getClass().getComponentType().getName().equals("long")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.LONG);
-		}
-		if (array.getClass().getComponentType().getName().equals("float")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.FLOAT);
-		}
-		if (array.getClass().getComponentType().getName().equals("double")) {
-			printPrimitiveArrayObject(array, PrimitiveTypes.DOUBLE);
-		}
-	}
+	public enum PrimitiveTypes {
+		BOOLEAN(Boolean.class), BYTE(Byte.class), CHAR(Character.class), SHORT(Short.class), INT(Integer.class), LONG(
+				Long.class), FLOAT(Float.class), DOUBLE(Double.class);
 
-	private void printPrimitiveArrayObject(Object array, PrimitiveTypes type) {
-		for (int i = 0; i < Array.getLength(array); i++) {
-			switch (type) {
-			case BOOLEAN:
-				DESTINATION.print("<boolean>" + Array.getBoolean(array, i) + "</boolean>");
-				break;
-			case BYTE:
-				DESTINATION.print("<byte>" + Array.getByte(array, i) + "</byte>");
-				break;
-			case CHAR:
-				DESTINATION.print("<char>" + Array.getChar(array, i) + "</char>");
-				break;
-			case SHORT:
-				DESTINATION.print("<short>" + Array.getShort(array, i) + "</short>");
-				break;
-			case INT:
-				DESTINATION.print("<int>" + Array.getInt(array, i) + "</int>");
-				break;
-			case LONG:
-				DESTINATION.print("<long>" + Array.getLong(array, i) + "</long>");
-				break;
-			case FLOAT:
-				DESTINATION.print("<float>" + Array.getFloat(array, i) + "</float>");
-				break;
-			case DOUBLE:
-				DESTINATION.print("<double>" + Array.getDouble(array, i) + "</double>");
-				break;
-			default:
-				break;
-			}
+		private final Class wrapper;
 
+		PrimitiveTypes(Class wrapper) {
+			this.wrapper = wrapper;
 		}
 
+		public Class getWrapper() {
+			return wrapper;
+		}
 	}
 }

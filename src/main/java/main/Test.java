@@ -9,8 +9,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import p.C;
+import p.C.PrimitiveTypes;
 
 public class Test {
+	String[] nullArray=new String[]{null,null,null};
 	Object nullObject = null;
 	private int primitiveInt=1;
 	transient float primiteFloat=132;
