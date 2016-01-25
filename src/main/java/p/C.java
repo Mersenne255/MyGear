@@ -139,6 +139,7 @@ public class C {
 			nonPrimitiveFields = null;
 			fields = null;
 		}
+		DESTINATION.flush();
 	}
 
 	private String createIndent(int width) {
