@@ -5,8 +5,10 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class C {
@@ -22,6 +24,8 @@ public class C {
 	private static PrintStream DESTINATION = System.out;
 
 	static Set<Object> objects = new HashSet<Object>();
+	
+	static Map<String,String> fieldNameClassName = new HashMap<String,String>();
 
 	public static void m(Object o, String args) {
 		transform(o);
@@ -32,6 +36,8 @@ public class C {
 	}
 
 	public static void transform(Object o) {
+		objects = new HashSet<Object>();
+		fieldNameClassName = new HashMap<String,String>();
 		if (o != null) {
 			DESTINATION.print("<Parent_object type=\"" + o.getClass().getName() + "\">");
 			transform(o, o.getClass(), 1);
@@ -41,37 +47,60 @@ public class C {
 		DESTINATION.print("</Parent_object>");
 	}
 
-	static String adjustTextForXML(String originalText) {
-		return originalText.replace("[", "ArrayOf").replaceAll("\\W", "");
+	static String adjustFieldNameForXML(String originalText) {
+		return originalText.replace("[", "ArrayOf").replaceAll("\\R", " ").replaceAll("\\$", "").replaceAll("<", "").replaceAll(">", "");
+	}
+	
+	static List<Field> findAllClassFields(Class c){
+		if(c==null){
+			return new ArrayList<Field>();
+		}
+		ArrayList<Field> fieldList=new ArrayList<Field>();
+		for(Field field:c.getDeclaredFields()){
+			if(!fieldNameClassName.containsKey(field.getName())){
+				fieldNameClassName.put(field.getName(), c.getName());
+				fieldList.add(field);
+			}
+		}		
+		fieldList.addAll(findAllClassFields(c.getSuperclass()));
+		for(Class implementedInterface:c.getInterfaces()){
+			fieldList.addAll(findAllClassFields(implementedInterface));
+		}
+		return fieldList;
+	}
+	
+	//TODO handle special characters
+	static String adjustFieldValueForXML(String fieldValue){
+		return fieldValue.replaceAll("<", "").replaceAll(">", "").replaceAll("\\s", " ").replaceAll("\\R", " ").replaceAll("\\W", " ");
 	}
 
-	static void transform(Object o, Class c, int depth) {
+	static private void transform(Object o, Class c, int depth) {
 
 		if (c.isArray()) {
 			try {
 				if (c.getComponentType().isPrimitive()) {
 					for (int i = 0; i < Array.getLength(o); i++) {
 						Object arrayObject = Array.get(o, i);
-						DESTINATION.print("<" + c.getComponentType().getName() + ">" + arrayObject.toString() + "</"
+						DESTINATION.print("<" + c.getComponentType().getName() + ">" + adjustFieldValueForXML(arrayObject.toString()) + "</"
 								+ c.getComponentType().getName() + ">");
 					}
 				} else if (isWrapperClass(c.getComponentType()) && ONLY_LITERALS_VALUE) {
 					for (int i = 0; i < Array.getLength(o); i++) {
 						Object arrayObject = Array.get(o, i);
-						String objectValue = arrayObject == null ? "null" : arrayObject.toString();
+						String objectValue = arrayObject == null ? "null" : adjustFieldValueForXML(arrayObject.toString());
 						DESTINATION.print("<" + c.getComponentType().getName() + ">" + objectValue + "</"
 								+ c.getComponentType().getName() + ">");
 					}
 				} else {
 					for (int i = 0; i < Array.getLength(o); i++) {
 						Object arrayObject = Array.get(o, i);
-						DESTINATION.print("<" + adjustTextForXML(c.getComponentType().getName()) + ">");
+						DESTINATION.print("<" + adjustFieldNameForXML(c.getComponentType().getName()) + ">");
 						if (arrayObject == null) {
 							DESTINATION.print("null");
 						} else {
 							transform(arrayObject, arrayObject.getClass(), depth + 1);
 						}
-						DESTINATION.print("</" + adjustTextForXML(c.getComponentType().getName()) + ">");
+						DESTINATION.print("</" + adjustFieldNameForXML(c.getComponentType().getName()) + ">");
 					}
 				}
 			} catch (Exception e) {
@@ -79,7 +108,7 @@ public class C {
 				e.printStackTrace();
 			}
 		} else {
-			Field[] fields = c.getDeclaredFields();
+			List<Field> fields = findAllClassFields(c);
 			List<Field> nonPrimitiveFields = new ArrayList<Field>();
 			for (Field field : fields) {
 				try {
@@ -91,8 +120,8 @@ public class C {
 					}
 					if (field.getType().isPrimitive()) {
 						DESTINATION.print(
-								"<" + adjustTextForXML(field.getName()) + printFieldAttributes(field, field.get(o))
-										+ ">" + field.get(o) + "</" + adjustTextForXML(field.getName()) + ">");
+								"<" + adjustFieldNameForXML(field.getName()) + printFieldAttributes(field, field.get(o))
+										+ ">" + adjustFieldValueForXML(field.get(o).toString()) + "</" + adjustFieldNameForXML(field.getName()) + ">");
 					} else {
 						nonPrimitiveFields.add(field);
 					}
@@ -103,7 +132,7 @@ public class C {
 			}
 			for (Field field : nonPrimitiveFields) {
 				try {
-					String fieldName = adjustTextForXML(field.getName());
+					String fieldName = adjustFieldNameForXML(field.getName());
 					DESTINATION.print("<" + fieldName + printFieldAttributes(field, field.get(o)) + ">");
 					Object innerObject = field.get(o);
 					if (innerObject == null) {
@@ -122,7 +151,7 @@ public class C {
 							DESTINATION.print("</" + fieldName + ">");
 							continue;
 						} else if (isEnumClass || isWrapperClass && ONLY_LITERALS_VALUE) {
-							DESTINATION.print(innerObject.toString());
+							DESTINATION.print(adjustFieldValueForXML(innerObject.toString()));
 							DESTINATION.print("</" + fieldName + ">");
 							continue;
 						} else {
@@ -186,7 +215,8 @@ public class C {
 		String objectType = fieldObject == null || field.getType().isPrimitive() ? field.getType().getName()
 				: fieldObject.getClass().getName().replace("[", "ArrayOf").replace(";", "");
 		String objectTypeText = PRINT_OBJECT_TYPE ? " type=\"" + objectType + "\"" : "";
-		return objectTypeText + modifiers + arraySize + objectId;
+		String inheritedFrom = " inherited_from=\""+fieldNameClassName.get(field.getName()) + "\"";
+		return objectTypeText + modifiers + arraySize + objectId + inheritedFrom;
 	}
 
 	public enum PrimitiveTypes {
