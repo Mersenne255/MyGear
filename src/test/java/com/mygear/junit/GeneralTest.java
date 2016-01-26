@@ -15,7 +15,7 @@ import p.C;
 public class GeneralTest {
 	private static final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
 	private static final ByteArrayOutputStream errContent = new ByteArrayOutputStream();
-	private PrintStream originalOutputStream = System.out;
+	private static PrintStream originalOutputStream = System.out;
 
 	@Before
 	public void setUpStreams() {
@@ -65,10 +65,15 @@ public class GeneralTest {
 	}
 	
 //	@Test
-//	public void testSpecialCharString(){
-//		C.m("!@#$%^&*()_+{}\"|:?><");
-//		assertTrue(outContent.toString().contains("!@#$%^&*()_+{}\"|:?><"));
-//	}
+	public void testSpecialCharString(){
+		char[] c=new char[((Double)Math.pow(2, 16)).intValue()];
+		for(int i=0; i<Math.pow(2, 16);i++){
+			c[i]=(char)i;
+			System.out.println(i+": "+(char)i);
+		}
+		C.m("!@#$%^&*()_+{}\"|:?><");
+		assertTrue(outContent.toString().contains("!@#$%^&*()_+{}\"|:?><"));
+	}
 	
 	//TODO field name with $
 	

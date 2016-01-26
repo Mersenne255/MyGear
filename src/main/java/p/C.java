@@ -21,6 +21,7 @@ public class C {
 	private static boolean PRINT_OBJECT_ID = true;
 	private static boolean PRINT_OBJECT_TYPE = true;
 	private static boolean PRINT_PRIVATE = true;
+	private static boolean PRINT_SYNTHETIC = true;
 	private static PrintStream DESTINATION = System.out;
 
 	static Set<Object> objects = new HashSet<Object>();
@@ -34,7 +35,7 @@ public class C {
 	public static void m(Object o) {
 		transform(o);
 	}
-
+	
 	public static void transform(Object o) {
 		objects = new HashSet<Object>();
 		fieldNameClassName = new HashMap<String,String>();
@@ -71,11 +72,10 @@ public class C {
 	
 	//TODO handle special characters
 	static String adjustFieldValueForXML(String fieldValue){
-		return fieldValue.replaceAll("<", "").replaceAll(">", "").replaceAll("\\s", " ").replaceAll("\\R", " ").replaceAll("\\W", " ");
+		return fieldValue.replaceAll("<", "").replaceAll(">", "").replaceAll("\\s", " ").replaceAll("\\R", " ").replaceAll("\\&", "").replaceAll("\\x00", "").replaceAll("\\x01", "");
 	}
 
 	static private void transform(Object o, Class c, int depth) {
-
 		if (c.isArray()) {
 			try {
 				if (c.getComponentType().isPrimitive()) {
@@ -113,6 +113,9 @@ public class C {
 			for (Field field : fields) {
 				try {
 					if (!PRINT_PRIVATE && !field.isAccessible()) {
+						continue;
+					}
+					if(!PRINT_SYNTHETIC && field.isSynthetic()){
 						continue;
 					}
 					if (!field.isAccessible()) {
