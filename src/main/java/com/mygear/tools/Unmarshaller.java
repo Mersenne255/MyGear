@@ -14,18 +14,16 @@ import java.util.Map;
 import java.util.Set;
 
 public class Unmarshaller {
-
     private int DEPTH_THRESHOLD = 5;
-    private char TAB_CHARACTER = ' ';
-    private int TAB_CHARACTER_MULTIPLIER = 2;
-    private boolean ONLY_LITERALS_VALUE = true;
+    private String TAB_STRING = "\t";
+    private boolean ONLY_WRAPPER_VALUE = true;
     private boolean PRINT_MODIFIERS = true;
     private boolean PRINT_ARRAY_SIZE = true;
     private boolean PRINT_OBJECT_ID = true;
     private boolean PRINT_OBJECT_TYPE = true;
     private boolean PRINT_PRIVATE = true;
-    private boolean PRINT_SYNTHETIC = true;
-    private String DESTINATION_STRING=null;
+    private boolean PRINT_SYNTHETIC = false;
+    private String EXPORT_FILE_PATH=null;
     private PrintStream DESTINATION = null;
 
     Set<Object> objects = new HashSet<Object>();
@@ -44,12 +42,23 @@ public class Unmarshaller {
         Element element = new Element();
         element.setName("ParentObject");
         element.setProperty(PropType.OBJECT_ID, String.valueOf(System.identityHashCode(o)));
-        element.setProperty(PropType.OBJECT_TYPE, o == null ? "null" : o.getClass().getName());
+        boolean isWrapperClass;
+        boolean isEnumClass;
+        boolean isArray;
+        if(o == null){
+        	element.setValue("null");
+        	//TODO print object
+        }else{
+        	element.setProperty(PropType.OBJECT_TYPE, o.getClass().getName());
+        	isWrapperClass = isWrapperClass(o.getClass());
+            isEnumClass = o.getClass().isEnum();
+            isArray = o.getClass().isArray();
+        }
     }
 
     public void transform(Object o) {
         try {
-            DESTINATION = DESTINATION_STRING == null?System.out:new PrintStream(new File(DESTINATION_STRING));
+            DESTINATION = EXPORT_FILE_PATH == null?System.out:new PrintStream(new File(EXPORT_FILE_PATH));
             objects = new HashSet<Object>();
             if (o != null) {
                 DESTINATION.print("<Parent_object type=\"" + o.getClass().getName() + "\">");
@@ -102,12 +111,7 @@ public class Unmarshaller {
         DESTINATION.flush();
         if (c.isArray()) {
             try {
-                if (c.getComponentType().isPrimitive()) {
-                    for (int i = 0; i < Array.getLength(o); i++) {
-                        Object arrayObject = Array.get(o, i);
-                        DESTINATION.print("<" + c.getComponentType().getName() + ">" + adjustFieldValueForXML(arrayObject.toString()) + "</" + c.getComponentType().getName() + ">");
-                    }
-                } else if (isWrapperClass(c.getComponentType()) && ONLY_LITERALS_VALUE) {
+                if (c.getComponentType().isPrimitive() || isWrapperClass(c.getComponentType()) && ONLY_WRAPPER_VALUE) {
                     for (int i = 0; i < Array.getLength(o); i++) {
                         Object arrayObject = Array.get(o, i);
                         String objectValue = arrayObject == null ? "null" : adjustFieldValueForXML(arrayObject.toString());
@@ -172,7 +176,7 @@ public class Unmarshaller {
                             DESTINATION.print("<!--Depth threshold reached. You can adjust using DEPTH_THRESHOLD argument-->");
                             DESTINATION.print("</" + fieldName + ">");
                             continue;
-                        } else if (isEnumClass || isWrapperClass && ONLY_LITERALS_VALUE) {
+                        } else if (isEnumClass || isWrapperClass && ONLY_WRAPPER_VALUE) {
                             DESTINATION.print(adjustFieldValueForXML(innerObject.toString()));
                             DESTINATION.print("</" + fieldName + ">");
                             continue;
@@ -194,7 +198,7 @@ public class Unmarshaller {
     }
 
     private String createIndent(int width) {
-        return new String(new char[width * (TAB_CHARACTER_MULTIPLIER >= 0 ? TAB_CHARACTER_MULTIPLIER : 1)]).replace('\0', TAB_CHARACTER);
+        return new String(new char[width]).replaceAll("\0", TAB_STRING);
     }
 
     private boolean isWrapperClass(Class wrapper) {
@@ -282,6 +286,7 @@ public class Unmarshaller {
         private String name;
         private List<Element> children = new ArrayList<Element>();
         private Map<PropType, String> allProperties = new HashMap<PropType, String>();
+        private String value;
 
         public String getName() {
             return name;
@@ -314,5 +319,61 @@ public class Unmarshaller {
         public String getProperty(PropType key) {
             return this.allProperties.get(key);
         }
+
+		public String getValue() {
+			return value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
     }
+    
+    //Builder methods
+    public Unmarshaller setDepthTreshold(int treshold){
+		this.DEPTH_THRESHOLD=treshold;
+		return this;
+	}
+	
+	public Unmarshaller setTabCharacter(String tabString){
+		this.TAB_STRING= tabString;
+		return this;
+	}
+	
+	public Unmarshaller setOnlyWrapperValue(boolean onlyValue){
+		this.ONLY_WRAPPER_VALUE=onlyValue;
+		return this;
+	}
+	
+	public Unmarshaller setPrintModifiers(boolean printModifiers){
+		this.PRINT_MODIFIERS=printModifiers;
+		return this;
+	}
+	
+	public Unmarshaller setPrintArraySize(boolean printArraySize){
+		this.PRINT_ARRAY_SIZE=printArraySize;
+		return this;
+	}
+	public Unmarshaller setPrintObjectId(boolean printObjectId){
+		this.PRINT_OBJECT_ID=printObjectId;
+		return this;
+	}
+	public Unmarshaller setPrintObjectType(boolean printObjectType){
+		this.PRINT_OBJECT_TYPE=printObjectType;
+		return this;
+	}
+	public Unmarshaller setPrintSynthetic(boolean printSynthetic){
+		this.PRINT_SYNTHETIC=printSynthetic;
+		return this;
+	}
+	
+	public Unmarshaller setPrintPrivate(boolean printPrivate){
+		this.PRINT_PRIVATE=printPrivate;
+		return this;
+	}
+	
+	public Unmarshaller setExportFilePath(String exportFilePath){
+		this.EXPORT_FILE_PATH=exportFilePath;
+		return this;
+	}
 }

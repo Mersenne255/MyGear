@@ -4,11 +4,19 @@ import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.mygear.junit.util.ClassForArray;
+import com.mygear.tools.Unmarshaller;
+import com.mygear.tools.Unmarshaller.PrimitiveType;
 
 import p.C;
 
@@ -16,6 +24,29 @@ public class GeneralTest {
 	private static final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
 	private static final ByteArrayOutputStream errContent = new ByteArrayOutputStream();
 	private static PrintStream originalOutputStream = System.out;
+	
+	String[] nullArray=new String[]{null,null,null};
+	Object nullObject = null;
+	private int primitiveInt=1;
+	transient float primiteFloat=132;
+	volatile double primiteDouble=321.321;
+	static String stringNullTest =null;
+	protected Calendar calendarNullTest =null;
+	ClassForArray classForArray=new ClassForArray();
+	String b="FDS";
+	Calendar myCalendar=Calendar.getInstance();
+	Integer i=1;
+	Unmarshaller.PrimitiveType pt=PrimitiveType.FLOAT;
+	PrimitiveType ptd=PrimitiveType.DOUBLE;
+	PrimitiveType pt2=PrimitiveType.BOOLEAN;
+	String[] simpleStringArray={"XMLValidator"};
+	int[] simpleIntArray={1,2};
+	String[][][] threeDStringArray={{{"A","B"},{"Unmarshaller"}},{{"D"},{"E"}},{{"F"},{"G"}}};
+	int[][][] threeDIntArray={{{1,2},{3}},{{4},{5}},{{6},{7}}};
+	boolean boolTest=false;
+	String stringTest="XMLValidator";
+	String[] simpleStringArrayTest={"TEST1"};
+	List<String> a=new ArrayList<String>(Arrays.asList(new String[]{"A"}));
 
 	@Before
 	public void setUpStreams() {
