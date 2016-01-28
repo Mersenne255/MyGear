@@ -68,7 +68,9 @@ public class Unmarshaller {
             }
             DESTINATION.print("</Parent_object>");
             DESTINATION.flush();
-            DESTINATION.close();
+            if(DESTINATION!=System.out){
+            	DESTINATION.close();
+            }
         } catch (FileNotFoundException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
