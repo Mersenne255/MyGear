@@ -15,6 +15,7 @@ public class C {
 	}
 
 	public static void m(Object o, String args) {
+		String[] arguments = args.split(" ");
 		m(o);
 	}
 }
