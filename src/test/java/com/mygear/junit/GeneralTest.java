@@ -67,7 +67,7 @@ public class GeneralTest {
 	public void testNullArray(){
 		String[] nullArray={null,null,null,null,null};
 		C.m(nullArray);
-		assertTrue(outContent.toString().matches(".*null.*null.*null.*null.*null.*"));
+		assertTrue(outContent.toString().matches("(?s).*null.*null.*null.*null.*null.*"));
 	}
 	
 	interface TestInterface{

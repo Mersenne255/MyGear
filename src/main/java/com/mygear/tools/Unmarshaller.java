@@ -66,7 +66,7 @@ public class Unmarshaller {
             } else {
                 DESTINATION.print("null");
             }
-            DESTINATION.print("</Parent_object>");
+            DESTINATION.println("</Parent_object>");
             DESTINATION.flush();
             if(DESTINATION!=System.out){
             	DESTINATION.close();
