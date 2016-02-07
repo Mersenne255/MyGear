@@ -5,7 +5,7 @@
 
 	<artifactId>mygear</artifactId>
 	<groupId>com.gajdosmartin</groupId>
-	<version>1.0.0</version>
+	<version>0.5.0</version>
 	<packaging>jar</packaging>
 	<distributionManagement>
 		<repository>
